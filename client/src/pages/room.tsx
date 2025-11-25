@@ -10,6 +10,7 @@ import VideoPlayer from "@/components/VideoPlayer";
 import VideoQueue from "@/components/VideoQueue";
 import UserPresence from "@/components/UserPresence";
 import type { Room, ChatMessage, Activity, VideoState } from "@shared/schema";
+import WebRTC from "@/components/WebRTC";
 
 export default function RoomPage() {
   const params = useParams<{ roomId: string }>();
@@ -64,7 +65,9 @@ export default function RoomPage() {
       setRoom(data.room);
       toast({
         title: "Joined Room",
-        description: `You joined ${data.room.users}`,
+        description: `You joined ${data.room.users
+          .map((u) => u.username)
+          .join(", ")}`,
       });
     });
 
@@ -335,17 +338,27 @@ export default function RoomPage() {
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="flex items-center justify-between gap-2 md:gap-4 p-3 md:p-4">
           <div className="flex items-center gap-2 md:gap-4 min-w-0">
-            <h1 className="text-base md:text-xl font-bold hidden sm:block">Watch Together</h1>
+            <h1 className="text-base md:text-xl font-bold hidden sm:block">
+              Watch Together
+            </h1>
             <div className="flex items-center gap-1 md:gap-2">
-              <span className="text-xs md:text-sm text-muted-foreground hidden sm:inline">Room:</span>
-              <code className="px-1.5 py-0.5 md:px-2 md:py-1 rounded bg-muted font-mono text-xs md:text-sm font-semibold" data-testid="text-room-code">
+              <span className="text-xs md:text-sm text-muted-foreground hidden sm:inline">
+                Room:
+              </span>
+              <code
+                className="px-1.5 py-0.5 md:px-2 md:py-1 rounded bg-muted font-mono text-xs md:text-sm font-semibold"
+                data-testid="text-room-code"
+              >
                 {params.roomId}
               </code>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 md:gap-3">
-            <UserPresence users={room.users} currentUsername={username as string} />
+            <UserPresence
+              users={room.users}
+              currentUsername={username as string}
+            />
             <Button
               data-testid="button-copy-link"
               onClick={handleCopyLink}
@@ -396,18 +409,19 @@ export default function RoomPage() {
             <VideoPlayer
               socket={socket}
               room={room}
-              username={username || ''}
+              username={username || ""}
               onBroadcastVideoState={broadcastVideoState}
             />
             {/* Queue on Mobile - Always visible, rendered inline */}
             <div className="lg:hidden mt-4 md:mt-6">
-              <VideoQueue 
-                socket={socket} 
-                room={room} 
-                username={username || ''} 
+              <VideoQueue
+                socket={socket}
+                room={room}
+                username={username || ""}
                 videoUrl={queueVideoUrl}
                 onVideoUrlChange={setQueueVideoUrl}
               />
+
             </div>
           </div>
         </div>
@@ -417,18 +431,18 @@ export default function RoomPage() {
           <div className="flex-1 overflow-hidden">
             <ChatSidebar
               socket={socket}
-              roomId={params.roomId || ''}
-              username={username || ''}
+              roomId={params.roomId || ""}
+              username={username || ""}
               messages={messages}
               typingUsers={typingUsers}
             />
           </div>
           {/* Queue on Desktop - In sidebar after chat */}
           <div className="border-t border-border">
-            <VideoQueue 
-              socket={socket} 
-              room={room} 
-              username={username || ''}
+            <VideoQueue
+              socket={socket}
+              room={room}
+              username={username || ""}
               videoUrl={queueVideoUrl}
               onVideoUrlChange={setQueueVideoUrl}
             />
@@ -436,16 +450,16 @@ export default function RoomPage() {
         </div>
       </div>
 
-      <Sheet >
+      <Sheet>
         <SheetTrigger asChild>
           <Button
             data-testid="button-open-chat-mobile"
             size="icon"
             onClick={() => setChatOpen(true)}
             style={{
-              position: 'fixed',
-              top: '16px',
-              right: '16px',
+              position: "fixed",
+              top: "16px",
+              right: "16px",
               zIndex: 50,
             }}
             className="lg:hidden h-14 w-14 rounded-full shadow-lg"
@@ -456,16 +470,13 @@ export default function RoomPage() {
         <SheetContent side="bottom" className="h-[85vh] p-0 lg:hidden">
           <ChatSidebar
             socket={socket}
-            roomId={params.roomId || ''}
-            username={username || ''}
+            roomId={params.roomId || ""}
+            username={username || ""}
             messages={messages}
             typingUsers={typingUsers}
           />
         </SheetContent>
       </Sheet>
-
     </div>
-
-   
   );
 }

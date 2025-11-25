@@ -70,48 +70,57 @@ export default function ChatSidebar({ socket, roomId, username, messages, typing
         <h2 className="font-semibold text-base md:text-lg">Chat</h2>
       </div>
 
-      <div className="flex-1 overflow-hidden" ref={scrollRef}>
-        <ScrollArea className="h-full w-full p-2 md:p-4">
-        <div className="space-y-2 md:space-y-3">
-          {messages.length === 0 ? (
-            <div className="text-center text-muted-foreground text-xs md:text-sm py-4 md:py-8">
-              No messages yet. Start the conversation!
-            </div>
-          ) : (
-            messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex flex-col gap-0.5 md:gap-1 ${msg.username === username ? 'items-end' : 'items-start'}`}
-                data-testid={`message-${msg.id}`}
-              >
-                <div className="flex items-baseline gap-1 md:gap-2">
-                  <span className="text-xs font-semibold" data-testid={`text-message-username-${msg.id}`}>
-                    {msg.username}
-                  </span>
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    {formatDistanceToNow(msg.timestamp, { addSuffix: true })}
-                  </span>
-                </div>
-                <div
-                  className={`px-2 py-1.5 md:px-3 md:py-2 rounded-lg max-w-[85%] md:max-w-[80%] break-words text-sm ${
-                    msg.username === username
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
-                  }`}
-                  data-testid={`text-message-content-${msg.id}`}
-                >
-                  {msg.message}
-                </div>
+      <div className="flex-1 overflow-y-clip relative" ref={scrollRef}>
+        <ScrollArea className="h-[370px] w-full p-2 md:p-4 ">
+          <div className="space-y-2 md:space-y-3">
+            {messages.length === 0 ? (
+              <div className="text-center text-muted-foreground text-xs md:text-sm py-4 md:py-8">
+                No messages yet. Start the conversation!
               </div>
-            ))
-          )}
-        </div>
-
-        {typingUsers.length > 0 && (
-          <div className="mt-3 text-sm text-muted-foreground italic" data-testid="text-typing-indicator">
-            {typingUsers.join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
+            ) : (
+              messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex flex-col gap-0.5 md:gap-1 ${
+                    msg.username === username ? "items-end" : "items-start"
+                  }`}
+                  data-testid={`message-${msg.id}`}
+                >
+                  <div className="flex items-baseline gap-1 md:gap-2">
+                    <span
+                      className="text-xs font-semibold"
+                      data-testid={`text-message-username-${msg.id}`}
+                    >
+                      {msg.username}
+                    </span>
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                      {formatDistanceToNow(msg.timestamp, { addSuffix: true })}
+                    </span>
+                  </div>
+                  <div
+                    className={`px-2 py-1.5 md:px-3 md:py-2 rounded-lg max-w-[85%] md:max-w-[80%] break-words text-sm ${
+                      msg.username === username
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
+                    }`}
+                    data-testid={`text-message-content-${msg.id}`}
+                  >
+                    {msg.message}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-        )}
+
+          {typingUsers.length > 0 && (
+            <div
+              className="mt-3 text-sm text-muted-foreground italic"
+              data-testid="text-typing-indicator"
+            >
+              {typingUsers.join(", ")} {typingUsers.length === 1 ? "is" : "are"}{" "}
+              typing...
+            </div>
+          )}
         </ScrollArea>
       </div>
 
@@ -122,7 +131,7 @@ export default function ChatSidebar({ socket, roomId, username, messages, typing
             placeholder="Type a message..."
             value={message}
             onChange={(e) => handleTyping(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+            onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
             maxLength={500}
             className="text-sm"
           />
