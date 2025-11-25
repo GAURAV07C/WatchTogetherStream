@@ -1,0 +1,236 @@
+Build a complete “Watch Together” real-time web application where multiple users can join the same room and watch YouTube videos together in perfect sync, chat with each other, and manage a playlist — all using WebRTC DataChannels for ultra-low latency video-state sync and WebSockets (Socket.IO) for signaling and room management.
+
+The app must be built using:
+
+Next.js (App Router)
+
+Tailwind CSS
+
+Socket.IO signaling server
+
+WebRTC DataChannel
+
+No database (in-memory rooms)
+
+YouTube IFrame Player API
+
+The application must include the following features:
+
+✅ 1. Room Create + Join Flow
+
+A user can Create Room (random roomId generated).
+
+A second user can Join Room by room code.
+
+Both users get connected through:
+
+Socket.IO (signaling)
+
+WebRTC PeerConnection
+
+WebRTC DataChannel for data sync
+
+Room join message should broadcast:
+
+“User X joined the room”
+
+✅ 2. Full Two-Way Control (Both Users Control Video)
+
+Any user can:
+
+Play video
+
+Pause video
+
+Seek video (forward/backward)
+
+Load a new video URL
+
+All actions must sync instantly using WebRTC DataChannel.
+
+When one user performs an action, the other user sees:
+
+“Gaurav paused the video”
+“Sagar seeked to 01:20”
+“Gaurav played the video”
+
+This requires loop-prevention using a isRemote flag.
+
+✅ 3. WebRTC DataChannel Sync System (Core Logic)
+
+Use a single RTCDataChannel to send:
+
+Play event
+
+Pause event
+
+Seek event
+
+Video load event
+
+CurrentTime every 500ms (if needed)
+
+Queue events
+
+Chat messages (optional fallback if socket fails)
+
+Flow:
+
+User performs action
+
+Action → DataChannel → remote peer
+
+Remote side performs same action without infinite loop
+
+This ensures ultra-low latency action sync.
+
+✅ 4. Real-Time Chat System
+
+Inside the room:
+
+Send messages instantly
+
+Messages appear on both sides
+
+Show sender name + timestamp
+
+Chat also works over Socket.IO (broadcast), while WebRTC DataChannel is optional backup.
+
+✅ 5. Typing Indicator
+
+Show:
+
+“Gaurav is typing…”
+
+When user is typing in chat box.
+
+Broadcast through Socket.IO to all members in room.
+
+Indicator should disappear after:
+
+User stops typing
+
+2 seconds timeout
+
+✅ 6. Show User Actions in Activity Feed
+
+Examples:
+
+“Gaurav paused the video”
+
+“Sagar played the video”
+
+“Gaurav seeked to 00:52”
+
+“Sagar loaded a new video”
+
+“User X joined the room”
+
+“User Y left the room”
+
+This makes the room interactive and transparent.
+
+✅ 7. Copy Room Link Button
+
+Auto-generate sharable room link:
+
+http://localhost:3000/room?id=ROOM_ID
+
+
+Button: Copy Link
+
+Clipboard API used.
+
+✅ 8. Netflix-Like UI Using Next.js + Tailwind
+
+UI must include:
+
+Beautiful center layout
+
+Chat sidebar
+
+Activity feed
+
+YouTube video area
+
+Video queue sidebar
+
+Buttons styled with Tailwind
+
+Dark theme
+
+Responsive layout
+
+Clean animations
+
+✅ 9. Support up to 10 Users in One Room
+
+System must be scalable:
+
+Each user connects via WebRTC mesh (P2P)
+
+Signaling handled via socket rooms
+
+DataChannel events broadcast to all peers
+
+Mesh is okay for max 10–12 users.
+
+✅ 10. Video Queue / Playlist System
+
+Users can:
+
+Add video URLs to playlist
+
+Remove videos
+
+Click on any video → loads for all
+
+Automatic next video after finish
+
+Queue must sync over WebRTC + Socket.
+
+✅ 11. WebRTC Signaling Server (Node.js + Socket.IO)
+
+Server responsibilities:
+
+Manage rooms
+
+Exchange Offer/Answer
+
+Exchange ICE candidates
+
+Broadcast user events
+
+Send join/leave notifications
+
+Flow:
+
+join-room → socket.join
+create-offer → send to target
+create-answer → send back
+ice → exchange
+connected → open DataChannel
+
+📌 Summary of the Final Product
+
+A fully functional Watch Together App with:
+
+Real-time YouTube video sync
+
+Full peer-to-peer control
+
+Chat + typing indicator
+
+Who-did-what action logs
+
+Room join/leave events
+
+Playlist system
+
+Beautiful Next.js + Tailwind UI
+
+WebRTC DataChannel for sync
+
+Socket.IO for signaling
+
+This is a complete production-ready architecture without using any database.
