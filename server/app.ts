@@ -1,4 +1,8 @@
 import { type Server } from "node:http";
+/**
+ * Node ka HTTP Server type
+ * Baad me server.listen() ke liye use hota hai
+ */
 
 import express, {
   type Express,
@@ -7,32 +11,67 @@ import express, {
   NextFunction,
 } from "express";
 
-import { registerRoutes } from "./routes";
+/**
+ * Express framework
+ * Typescript ke types (Express, Request, Response)
+ */
 
+import { registerRoutes } from "./routes";
+/**
+ * Tumhari API + socket routes yahin register hoti hain
+ * Ye function HTTP server return karta hai
+ */
+
+
+// Custom logger function
 export function log(message: string, source = "express") {
+  // Time ke saath formatted log print karta hai
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
     hour12: true,
   });
+  // 10:42:13 AM [express] GET /api/room 200 in 12ms
 
   console.log(`${formattedTime} [${source}] ${message}`);
 }
-
+/**
+ * Ye single express instance hai
+ * Isko dev & prod dono me reuse kiya jaata hai
+ */
 export const app = express();
 
+
+// rawBody
 declare module 'http' {
   interface IncomingMessage {
     rawBody: unknown
   }
 }
+
+/**
+ * Node ke request object me custom property add kar rahe ho
+ * TypeScript ko bata rahe ho:
+ * req.rawBody valid hai
+ */
 app.use(express.json({
   verify: (req, _res, buf) => {
     req.rawBody = buf;
   }
 }));
+
+/**
+ * Raw request body buffer form me save hoti hai
+ * * * Use cases: * * *
+ * Webhooks (Stripe, Razorpay, etc.)
+ * Signature verification
+ * Debugging exact payload
+ */
+
 app.use(express.urlencoded({ extended: false }));
+// Form data parse
+
 
 app.use((req, res, next) => {
   const start = Date.now();

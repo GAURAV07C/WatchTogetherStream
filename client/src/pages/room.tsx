@@ -10,13 +10,13 @@ import VideoPlayer from "@/components/VideoPlayer";
 import VideoQueue from "@/components/VideoQueue";
 import UserPresence from "@/components/UserPresence";
 import type { Room, ChatMessage, Activity, VideoState } from "@shared/schema";
-import WebRTC from "@/components/WebRTC";
+import { motion } from "framer-motion";
 
 export default function RoomPage() {
   const params = useParams<{ roomId: string }>();
   const searchParams = new URLSearchParams(useSearch());
-  const username = searchParams.get('username');
-  const isCreating = searchParams.get('create') === 'true';
+  const username = searchParams.get("username");
+  const isCreating = searchParams.get("create") === "true";
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -43,25 +43,25 @@ export default function RoomPage() {
     if (!username) return;
 
     const newSocket = io({
-      path: '/socket.io',
+      path: "/socket.io",
     });
 
-    newSocket.on('connect', () => {
+    newSocket.on("connect", () => {
       setIsConnected(true);
       if (params.roomId) {
         if (isCreating) {
-          newSocket.emit('create-room', { roomId: params.roomId, username });
+          newSocket.emit("create-room", { roomId: params.roomId, username });
         } else {
-          newSocket.emit('join-room', { roomId: params.roomId, username });
+          newSocket.emit("join-room", { roomId: params.roomId, username });
         }
       }
     });
 
-    newSocket.on('disconnect', () => {
+    newSocket.on("disconnect", () => {
       setIsConnected(false);
     });
 
-    newSocket.on('room-joined', (data: { room: Room }) => {
+    newSocket.on("room-joined", (data: { room: Room }) => {
       setRoom(data.room);
       toast({
         title: "Joined Room",
@@ -71,66 +71,74 @@ export default function RoomPage() {
       });
     });
 
-    newSocket.on('room-updated', (data: { room: Room }) => {
+    newSocket.on("room-updated", (data: { room: Room }) => {
       setRoom(data.room);
     });
 
-    newSocket.on('user-joined', (data: { username: string, socketId: string }) => {
-      if (data.username !== username) {
-        // Initiate WebRTC connection as the caller
-        initiateWebRTCConnection(data.socketId, newSocket);
+    newSocket.on(
+      "user-joined",
+      (data: { username: string; socketId: string }) => {
+        if (data.username !== username) {
+          // Initiate WebRTC connection as the caller
+          initiateWebRTCConnection(data.socketId, newSocket);
+          toast({
+            title: "User Joined",
+            description: `${data.username} joined the room`,
+          });
+        }
+      }
+    );
+
+    newSocket.on(
+      "user-left",
+      (data: { username: string; socketId: string }) => {
+        // Clean up WebRTC connection
+        cleanupPeerConnection(data.socketId);
         toast({
-          title: "User Joined",
-          description: `${data.username} joined the room`,
+          title: "User Left",
+          description: `${data.username} left the room`,
         });
       }
+    );
+
+    newSocket.on("chat-message", (message: ChatMessage) => {
+      setMessages((prev) => [...prev, message]);
     });
 
-    newSocket.on('user-left', (data: { username: string, socketId: string }) => {
-      // Clean up WebRTC connection
-      cleanupPeerConnection(data.socketId);
-      toast({
-        title: "User Left",
-        description: `${data.username} left the room`,
-      });
-    });
-
-    newSocket.on('chat-message', (message: ChatMessage) => {
-      setMessages(prev => [...prev, message]);
-    });
-
-    newSocket.on('activity', (activity: Activity) => {
+    newSocket.on("activity", (activity: Activity) => {
       // Show toast for various activity types
       let title = "";
       let description = "";
-      
-      switch(activity.type) {
-        case 'video_play':
+
+      switch (activity.type) {
+        case "video_play":
           title = "Video Playing";
           description = `${activity.username} started playback`;
           break;
-        case 'video_pause':
+        case "video_pause":
           title = "Video Paused";
           description = `${activity.username} paused playback`;
           break;
-        case 'video_seek':
+        case "video_seek":
           title = "Video Seeked";
-          description = `${activity.username} jumped to ${Math.floor(activity.metadata?.time || 0)}s`;
+          description = `${activity.username} jumped to ${Math.floor(
+            activity.metadata?.time || 0
+          )}s`;
           break;
-        case 'video_load':
+        case "video_load":
           title = "Video Loaded";
           description = `${activity.username} loaded a new video`;
           break;
-        case 'video_add':
+        case "video_add":
           title = "Video Added";
           description = `${activity.username} added a video to queue`;
           break;
-        case 'video_remove':
+        case "video_remove":
           title = "Video Removed";
           description = `${activity.username} removed a video from queue`;
           break;
       }
-      
+
       if (title && description) {
         toast({
           title,
@@ -139,51 +147,62 @@ export default function RoomPage() {
       }
     });
 
-    newSocket.on('typing-start', (data: { username: string }) => {
-      setTypingUsers(prev => [...new Set([...prev, data.username])]);
+    newSocket.on("typing-start", (data: { username: string }) => {
+      setTypingUsers((prev) => [...new Set([...prev, data.username])]);
     });
 
-    newSocket.on('typing-stop', (data: { username: string }) => {
-      setTypingUsers(prev => prev.filter(u => u !== data.username));
+    newSocket.on("typing-stop", (data: { username: string }) => {
+      setTypingUsers((prev) => prev.filter((u) => u !== data.username));
     });
 
     // WebRTC signaling - these events come from the server
-    newSocket.on('webrtc-offer', async (data: { from: string, offer: RTCSessionDescriptionInit }) => {
-      console.log('Received WebRTC offer from', data.from);
-      await handleWebRTCOffer(data.from, data.offer, newSocket);
-    });
-
-    newSocket.on('webrtc-answer', async (data: { from: string, answer: RTCSessionDescriptionInit }) => {
-      console.log('Received WebRTC answer from', data.from);
-      const pc = peerConnections.current.get(data.from);
-      if (pc) {
-        await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-        console.log('Set remote description for', data.from);
+    newSocket.on(
+      "webrtc-offer",
+      async (data: { from: string; offer: RTCSessionDescriptionInit }) => {
+        console.log("Received WebRTC offer from", data.from);
+        await handleWebRTCOffer(data.from, data.offer, newSocket);
       }
-    });
+    );
 
-    newSocket.on('webrtc-ice-candidate', async (data: { from: string, candidate: RTCIceCandidateInit }) => {
-      console.log('Received ICE candidate from', data.from);
-      const pc = peerConnections.current.get(data.from);
-      if (pc) {
-        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-        console.log('Added ICE candidate for', data.from);
+    newSocket.on(
+      "webrtc-answer",
+      async (data: { from: string; answer: RTCSessionDescriptionInit }) => {
+        console.log("Received WebRTC answer from", data.from);
+        const pc = peerConnections.current.get(data.from);
+        if (pc) {
+          await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+          console.log("Set remote description for", data.from);
+        }
       }
-    });
+    );
 
-    newSocket.on('error', (error: { message: string }) => {
+    newSocket.on(
+      "webrtc-ice-candidate",
+      async (data: { from: string; candidate: RTCIceCandidateInit }) => {
+        console.log("Received ICE candidate from", data.from);
+        const pc = peerConnections.current.get(data.from);
+        if (pc) {
+          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+          console.log("Added ICE candidate for", data.from);
+        }
+      }
+    );
+
+    newSocket.on("error", (error: { message: string }) => {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
-      
+
       // Redirect to home on critical errors
-      if (error.message.includes('Room not found') || 
-          error.message.includes('Username already taken') ||
-          error.message.includes('Failed to create room')) {
+      if (
+        error.message.includes("Room not found") ||
+        error.message.includes("Username already taken") ||
+        error.message.includes("Failed to create room")
+      ) {
         setTimeout(() => {
-          setLocation('/');
+          setLocation("/");
         }, 2000);
       }
     });
@@ -199,19 +218,22 @@ export default function RoomPage() {
     };
   }, [params.roomId, username, isCreating]);
 
-  const initiateWebRTCConnection = async (targetSocketId: string, socket: Socket) => {
+  const initiateWebRTCConnection = async (
+    targetSocketId: string,
+    socket: Socket
+  ) => {
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
     });
 
     peerConnections.current.set(targetSocketId, pc);
 
     // Create data channel
-    const dc = pc.createDataChannel('videoSync');
+    const dc = pc.createDataChannel("videoSync");
     dataChannels.current.set(targetSocketId, dc);
 
     dc.onopen = () => {
-      console.log('DataChannel opened with', targetSocketId);
+      console.log("DataChannel opened with", targetSocketId);
     };
 
     dc.onmessage = (event) => {
@@ -221,7 +243,7 @@ export default function RoomPage() {
     // ICE candidate handling
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        socket.emit('webrtc-ice-candidate', {
+        socket.emit("webrtc-ice-candidate", {
           to: targetSocketId,
           candidate: event.candidate,
         });
@@ -231,15 +253,19 @@ export default function RoomPage() {
     // Create and send offer
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    socket.emit('webrtc-offer', {
+    socket.emit("webrtc-offer", {
       to: targetSocketId,
       offer: pc.localDescription,
     });
   };
 
-  const handleWebRTCOffer = async (fromSocketId: string, offer: RTCSessionDescriptionInit, socket: Socket) => {
+  const handleWebRTCOffer = async (
+    fromSocketId: string,
+    offer: RTCSessionDescriptionInit,
+    socket: Socket
+  ) => {
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
     });
 
     peerConnections.current.set(fromSocketId, pc);
@@ -250,7 +276,7 @@ export default function RoomPage() {
       dataChannels.current.set(fromSocketId, dc);
 
       dc.onopen = () => {
-        console.log('DataChannel opened with', fromSocketId);
+        console.log("DataChannel opened with", fromSocketId);
       };
 
       dc.onmessage = (event) => {
@@ -261,7 +287,7 @@ export default function RoomPage() {
     // ICE candidate handling
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        socket.emit('webrtc-ice-candidate', {
+        socket.emit("webrtc-ice-candidate", {
           to: fromSocketId,
           candidate: event.candidate,
         });
@@ -272,7 +298,7 @@ export default function RoomPage() {
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    socket.emit('webrtc-answer', {
+    socket.emit("webrtc-answer", {
       to: fromSocketId,
       answer: pc.localDescription,
     });
@@ -291,16 +317,18 @@ export default function RoomPage() {
     try {
       const videoState: VideoState = JSON.parse(data);
       // This will be handled by the VideoPlayer component
-      window.dispatchEvent(new CustomEvent('remote-video-state', { detail: videoState }));
+      window.dispatchEvent(
+        new CustomEvent("remote-video-state", { detail: videoState })
+      );
     } catch (error) {
-      console.error('Failed to parse DataChannel message:', error);
+      console.error("Failed to parse DataChannel message:", error);
     }
   };
 
   const broadcastVideoState = (videoState: VideoState) => {
     const message = JSON.stringify(videoState);
     dataChannels.current.forEach((dc) => {
-      if (dc.readyState === 'open') {
+      if (dc.readyState === "open") {
         dc.send(message);
       }
     });
@@ -316,7 +344,7 @@ export default function RoomPage() {
   };
 
   const handleLeaveRoom = () => {
-    setLocation('/');
+    setLocation("/");
   };
 
   if (!isConnected || !room) {
@@ -325,7 +353,7 @@ export default function RoomPage() {
         <div className="text-center space-y-4">
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="text-lg text-muted-foreground">
-            {!isConnected ? 'Connecting to room...' : 'Loading room data...'}
+            {!isConnected ? "Connecting to room..." : "Loading room data..."}
           </p>
         </div>
       </div>
@@ -421,7 +449,6 @@ export default function RoomPage() {
                 videoUrl={queueVideoUrl}
                 onVideoUrlChange={setQueueVideoUrl}
               />
-
             </div>
           </div>
         </div>
@@ -452,22 +479,24 @@ export default function RoomPage() {
 
       <Sheet>
         <SheetTrigger asChild>
-          <Button
-            data-testid="button-open-chat-mobile"
-            size="icon"
-            onClick={() => setChatOpen(true)}
-            style={{
-              position: "fixed",
-              top: "16px",
-              right: "16px",
-              zIndex: 50,
+          <motion.button
+            drag
+            dragConstraints={{
+              top:0,
+              left:10,
+              right:10,
+              bottom:350
             }}
-            className="lg:hidden h-14 w-14 rounded-full shadow-lg"
+            dragElastic={0.2}
+            transition={{type:"spring", stiffness:300}}
+            onClick={() => setChatOpen(true)}
+            className="lg:hidden fixed z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center pointer-events-auto"
+            style={{ top: 16, left: "calc(100vw - 72px)" }}
           >
-            <MessageSquare className="w-6 h-6" />
-          </Button>
+            <MessageSquare className="h-6 w-6" />
+          </motion.button>
         </SheetTrigger>
-        <SheetContent side="bottom" className="h-[85vh] p-0 lg:hidden">
+        <SheetContent side="bottom" className="h-[55vh] p-0 lg:hidden ">
           <ChatSidebar
             socket={socket}
             roomId={params.roomId || ""}
